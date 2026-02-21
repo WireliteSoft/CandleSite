@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Flame } from 'lucide-react';
+import logo from '../../logo.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -35,8 +35,7 @@ export default function Auth() {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
-          <Flame className="w-12 h-12 text-orange-500 mr-2" />
-          <h1 className="text-3xl font-bold text-gray-800">Candle Haven</h1>
+          <img src={logo} alt="Candle Haven" className="h-20 w-auto" />
         </div>
 
         <h2 className="text-2xl font-semibold text-center mb-6">

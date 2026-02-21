@@ -8,6 +8,7 @@ import AdminOrders from './components/AdminOrders';
 import AdminCustomOrders from './components/AdminCustomOrders';
 import AdminUsers from './components/AdminUsers';
 import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users } from 'lucide-react';
+import logo from '../logo.png';
 
 type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-custom' | 'admin-users';
 
@@ -35,9 +36,8 @@ function App() {
       <nav className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Flame className="w-8 h-8 text-orange-500" />
-              <h1 className="text-2xl font-bold text-gray-800">Candle Haven</h1>
+            <div className="flex items-center">
+              <img src={logo} alt="Candle Haven" className="h-14 w-auto" />
             </div>
 
             <div className="flex items-center gap-4">
