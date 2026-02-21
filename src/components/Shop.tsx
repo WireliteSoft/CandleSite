@@ -194,7 +194,7 @@ export default function Shop() {
 
   return (
     <div className="max-w-7xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Our Candles</h1>
         <button
           onClick={() => setShowCart(!showCart)}
@@ -217,12 +217,12 @@ export default function Shop() {
           ) : (
             <>
               {cart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-4 border-b">
+                <div key={item.id} className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 py-4 border-b">
                   <div>
                     <h3 className="font-semibold">{item.name}</h3>
                     <p className="text-sm text-gray-600">${item.price.toFixed(2)} each</p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(item.id, -1)}
@@ -251,7 +251,7 @@ export default function Shop() {
                   </div>
                 </div>
               ))}
-              <div className="flex justify-between items-center mt-6">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mt-6">
                 <span className="text-xl font-bold">Total: ${totalAmount.toFixed(2)}</span>
                 <button
                   onClick={() => setShowCheckout(true)}

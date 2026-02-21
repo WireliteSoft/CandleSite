@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import Auth from './components/Auth';
 import Shop from './components/Shop';
@@ -41,122 +41,86 @@ function App() {
     return <Auth />;
   }
 
+  const navItems: Array<{ view: View; label: string; icon: ReactNode; adminOnly?: boolean }> = [
+    { view: 'shop', label: 'Shop', icon: <Store className="w-5 h-5" /> },
+    { view: 'custom', label: 'Custom Order', icon: <Sparkles className="w-5 h-5" /> },
+    { view: 'admin-inventory', label: 'Inventory', icon: <Package className="w-5 h-5" />, adminOnly: true },
+    { view: 'admin-orders', label: 'Orders', icon: <ShoppingBag className="w-5 h-5" />, adminOnly: true },
+    { view: 'admin-custom', label: 'Custom Requests', icon: <FileText className="w-5 h-5" />, adminOnly: true },
+    { view: 'admin-users', label: 'Users', icon: <Users className="w-5 h-5" />, adminOnly: true },
+  ];
+  const visibleNavItems = navItems.filter((item) => !item.adminOnly || profile?.is_admin);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
-      <button
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      >
-        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        {theme === 'dark' ? 'Light' : 'Dark'}
-      </button>
       <nav className="bg-white dark:bg-gray-800 shadow-md">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 space-y-3">
+          <div className="flex justify-between items-center gap-3">
             <div className="flex items-center">
               <img
                 src={logo}
                 alt="Candle Haven"
-                className="w-[280px] max-w-[45vw] h-auto object-contain shrink-0"
+                className="w-[180px] sm:w-[240px] md:w-[280px] h-auto object-contain shrink-0"
               />
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
-                onClick={() => setCurrentView('shop')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  currentView === 'shop'
-                    ? 'bg-orange-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <Store className="w-5 h-5" />
-                Shop
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                <span className="hidden sm:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
               </button>
-
-              <button
-                onClick={() => setCurrentView('custom')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  currentView === 'custom'
-                    ? 'bg-orange-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Sparkles className="w-5 h-5" />
-                Custom Order
-              </button>
-
-              {profile?.is_admin && (
-                <>
-                  <div className="h-6 w-px bg-gray-300" />
-                  <button
-                    onClick={() => setCurrentView('admin-inventory')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      currentView === 'admin-inventory'
-                        ? 'bg-orange-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Package className="w-5 h-5" />
-                    Inventory
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView('admin-orders')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      currentView === 'admin-orders'
-                        ? 'bg-orange-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <ShoppingBag className="w-5 h-5" />
-                    Orders
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView('admin-custom')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      currentView === 'admin-custom'
-                        ? 'bg-orange-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <FileText className="w-5 h-5" />
-                    Custom Requests
-                  </button>
-
-                  <button
-                    onClick={() => setCurrentView('admin-users')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                      currentView === 'admin-users'
-                        ? 'bg-orange-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Users className="w-5 h-5" />
-                    Users
-                  </button>
-                </>
-              )}
-
-              <div className="h-6 w-px bg-gray-300" />
-
-              <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3">
                 {profile?.is_admin && (
                   <span className="flex items-center gap-1 text-sm font-medium text-orange-600">
                     <Shield className="w-4 h-4" />
                     Admin
                   </span>
                 )}
-                <button
-                  onClick={signOut}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Sign Out
-                </button>
               </div>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
             </div>
+          </div>
+
+          <div className="md:hidden">
+            <label className="sr-only" htmlFor="mobile-view">Select view</label>
+            <select
+              id="mobile-view"
+              value={currentView}
+              onChange={(e) => setCurrentView(e.target.value as View)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+            >
+              {visibleNavItems.map((item) => (
+                <option key={item.view} value={item.view}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden md:flex flex-wrap items-center gap-2">
+            {visibleNavItems.map((item) => (
+              <button
+                key={item.view}
+                onClick={() => setCurrentView(item.view)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentView === item.view
+                    ? 'bg-orange-500 text-white'
+                    : 'text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>
       </nav>
