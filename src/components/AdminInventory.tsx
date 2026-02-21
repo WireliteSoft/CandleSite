@@ -1,19 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiDelete, apiGet, apiPost, apiPut, Candle } from '../lib/api';
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
-
-interface Candle {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  stock_quantity: number;
-  scent: string | null;
-  size: string | null;
-  burn_time: number | null;
-  image_url: string | null;
-  is_active: boolean;
-}
 
 export default function AdminInventory() {
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -34,17 +21,16 @@ export default function AdminInventory() {
   });
 
   useEffect(() => {
-    loadCandles();
+    void loadCandles();
   }, []);
 
   const loadCandles = async () => {
-    const { data } = await supabase
-      .from('candles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (data) setCandles(data);
-    setLoading(false);
+    try {
+      const response = await apiGet<{ data: Candle[] }>('/api/candles/admin');
+      setCandles(response.data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -73,7 +59,7 @@ export default function AdminInventory() {
       size: candle.size || '',
       burn_time: candle.burn_time?.toString() || '',
       image_url: candle.image_url || '',
-      is_active: candle.is_active,
+      is_active: Boolean(candle.is_active),
     });
     setEditingId(candle.id);
     setShowForm(true);
@@ -86,40 +72,39 @@ export default function AdminInventory() {
       name: formData.name,
       description: formData.description || null,
       price: parseFloat(formData.price),
-      stock_quantity: parseInt(formData.stock_quantity),
+      stock_quantity: parseInt(formData.stock_quantity, 10),
       scent: formData.scent || null,
       size: formData.size || null,
-      burn_time: formData.burn_time ? parseInt(formData.burn_time) : null,
+      burn_time: formData.burn_time ? parseInt(formData.burn_time, 10) : null,
       image_url: formData.image_url || null,
       is_active: formData.is_active,
     };
 
     if (editingId) {
-      await supabase
-        .from('candles')
-        .update({ ...candleData, updated_at: new Date().toISOString() })
-        .eq('id', editingId);
+      await apiPut(`/api/candles/admin/${editingId}`, candleData);
     } else {
-      await supabase.from('candles').insert(candleData);
+      await apiPost('/api/candles/admin', candleData);
     }
 
-    loadCandles();
+    await loadCandles();
     resetForm();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this candle?')) {
-      await supabase.from('candles').delete().eq('id', id);
-      loadCandles();
+      await apiDelete(`/api/candles/admin/${id}`);
+      await loadCandles();
     }
   };
 
   const toggleActive = async (id: string, isActive: boolean) => {
-    await supabase
-      .from('candles')
-      .update({ is_active: !isActive, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    loadCandles();
+    const candle = candles.find((c) => c.id === id);
+    if (!candle) return;
+    await apiPut(`/api/candles/admin/${id}`, {
+      ...candle,
+      is_active: !isActive,
+    });
+    await loadCandles();
   };
 
   if (loading) {
@@ -283,7 +268,7 @@ export default function AdminInventory() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {candles.map(candle => (
+            {candles.map((candle) => (
               <tr key={candle.id}>
                 <td className="px-6 py-4 whitespace-nowrap font-medium">{candle.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{candle.scent || '-'}</td>
@@ -296,7 +281,7 @@ export default function AdminInventory() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
-                    onClick={() => toggleActive(candle.id, candle.is_active)}
+                    onClick={() => void toggleActive(candle.id, Boolean(candle.is_active))}
                     className={`px-3 py-1 rounded-full text-xs font-medium ${
                       candle.is_active
                         ? 'bg-green-100 text-green-800'
@@ -315,7 +300,7 @@ export default function AdminInventory() {
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(candle.id)}
+                      onClick={() => void handleDelete(candle.id)}
                       className="text-red-600 hover:text-red-800"
                     >
                       <Trash2 className="w-4 h-4" />

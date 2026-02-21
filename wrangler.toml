@@ -1,0 +1,8 @@
+name = "candle-haven"
+compatibility_date = "2026-02-21"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "candle-haven-db"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"

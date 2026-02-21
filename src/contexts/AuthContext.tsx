@@ -1,17 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-
-interface Profile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  is_admin: boolean;
-}
+import { apiGet, apiPost, authToken, ApiUser, Profile } from '../lib/api';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: ApiUser | null;
   profile: Profile | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -19,71 +10,53 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+interface AuthResponse {
+  token: string;
+  user: ApiUser;
+  profile: Profile;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<ApiUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
+    const bootstrap = async () => {
+      const token = authToken.get();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await apiGet<{ user: ApiUser; profile: Profile }>('/api/auth/me');
+        setUser(data.user);
+        setProfile(data.profile);
+      } catch {
+        authToken.clear();
+        setUser(null);
+        setProfile(null);
+      } finally {
         setLoading(false);
       }
-    });
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      })();
-    });
-
-    return () => subscription.unsubscribe();
+    void bootstrap();
   }, []);
-
-  const loadProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (data) {
-      setProfile(data);
-    }
-    setLoading(false);
-  };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const data = await apiPost<AuthResponse>('/api/auth/signup', {
         email,
         password,
+        fullName,
       });
-
-      if (error) throw error;
-
-      if (data.user) {
-        await supabase.from('profiles').insert({
-          id: data.user.id,
-          email: email,
-          full_name: fullName,
-        });
-      }
-
+      authToken.set(data.token);
+      setUser(data.user);
+      setProfile(data.profile);
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -92,12 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const data = await apiPost<AuthResponse>('/api/auth/login', {
         email,
         password,
       });
-
-      if (error) throw error;
+      authToken.set(data.token);
+      setUser(data.user);
+      setProfile(data.profile);
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -105,13 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    authToken.clear();
+    setUser(null);
     setProfile(null);
   };
 
   const value = {
     user,
-    session,
     profile,
     loading,
     signUp,

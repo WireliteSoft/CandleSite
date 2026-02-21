@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiGet, apiPost, Candle } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { ShoppingCart, Plus, Minus, Flame, Package } from 'lucide-react';
-
-interface Candle {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  stock_quantity: number;
-  scent: string | null;
-  size: string | null;
-  burn_time: number | null;
-  image_url: string | null;
-}
 
 interface CartItem extends Candle {
   quantity: number;
@@ -35,29 +23,31 @@ export default function Shop() {
   const [orderSuccess, setOrderSuccess] = useState(false);
 
   useEffect(() => {
-    loadCandles();
+    void loadCandles();
   }, []);
 
   const loadCandles = async () => {
-    const { data } = await supabase
-      .from('candles')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
-
-    if (data) setCandles(data);
-    setLoading(false);
+    try {
+      const response = await apiGet<{ data: Candle[] }>('/api/candles');
+      setCandles(response.data);
+    } catch (error) {
+      console.error('Failed to load candles:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addToCart = (candle: Candle) => {
-    const existing = cart.find(item => item.id === candle.id);
+    const existing = cart.find((item) => item.id === candle.id);
     if (existing) {
       if (existing.quantity < candle.stock_quantity) {
-        setCart(cart.map(item =>
-          item.id === candle.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        ));
+        setCart(
+          cart.map((item) =>
+            item.id === candle.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        );
       }
     } else {
       setCart([...cart, { ...candle, quantity: 1 }]);
@@ -65,17 +55,21 @@ export default function Shop() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
-    setCart(cart.map(item => {
-      if (item.id === id) {
-        const newQuantity = item.quantity + delta;
-        return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
-      }
-      return item;
-    }).filter(item => item.quantity > 0));
+    setCart(
+      cart
+        .map((item) => {
+          if (item.id === id) {
+            const newQuantity = item.quantity + delta;
+            return newQuantity > 0 ? { ...item, quantity: newQuantity } : item;
+          }
+          return item;
+        })
+        .filter((item) => item.quantity > 0)
+    );
   };
 
   const removeFromCart = (id: string) => {
-    setCart(cart.filter(item => item.id !== id));
+    setCart(cart.filter((item) => item.id !== id));
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -87,49 +81,23 @@ export default function Shop() {
     setOrderLoading(true);
 
     try {
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          total_amount: totalAmount,
-          shipping_address: shippingAddress,
-          customer_name: customerName,
-          customer_email: customerEmail,
-          customer_phone: customerPhone,
-          status: 'pending',
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      const orderItems = cart.map(item => ({
-        order_id: order.id,
-        candle_id: item.id,
-        quantity: item.quantity,
-        price_at_time: item.price,
-        candle_name: item.name,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      for (const item of cart) {
-        await supabase
-          .from('candles')
-          .update({ stock_quantity: item.stock_quantity - item.quantity })
-          .eq('id', item.id);
-      }
+      await apiPost<{ id: string; total_amount: number }>('/api/orders', {
+        shipping_address: shippingAddress,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        items: cart.map((item) => ({
+          candle_id: item.id,
+          quantity: item.quantity,
+        })),
+      });
 
       setOrderSuccess(true);
       setCart([]);
       setTimeout(() => {
         setShowCheckout(false);
         setOrderSuccess(false);
-        loadCandles();
+        void loadCandles();
       }, 2000);
     } catch (error) {
       console.error('Order error:', error);
@@ -248,7 +216,7 @@ export default function Shop() {
             <p className="text-gray-500">Your cart is empty</p>
           ) : (
             <>
-              {cart.map(item => (
+              {cart.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-4 border-b">
                   <div>
                     <h3 className="font-semibold">{item.name}</h3>
@@ -298,7 +266,7 @@ export default function Shop() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {candles.map(candle => (
+        {candles.map((candle) => (
           <div key={candle.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
             <div className="h-48 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
               {candle.image_url ? (

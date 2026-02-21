@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiPost } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles } from 'lucide-react';
 
@@ -21,16 +21,11 @@ export default function CustomOrderForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('custom_candle_orders').insert({
-        user_id: user?.id || null,
-        ...formData,
-        status: 'pending',
-      });
-
-      if (error) throw error;
+      await apiPost('/api/custom-orders', formData);
 
       setSuccess(true);
       setFormData({

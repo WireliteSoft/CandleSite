@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiGet, apiPut } from '../lib/api';
 import { Sparkles, Eye } from 'lucide-react';
 
 interface CustomOrder {
@@ -25,26 +25,22 @@ export default function AdminCustomOrders() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadOrders();
+    void loadOrders();
   }, []);
 
   const loadOrders = async () => {
-    const { data } = await supabase
-      .from('custom_candle_orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (data) setOrders(data);
-    setLoading(false);
+    try {
+      const response = await apiGet<{ data: CustomOrder[] }>('/api/custom-orders/admin');
+      setOrders(response.data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateStatus = async (orderId: string, status: string) => {
-    await supabase
-      .from('custom_candle_orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', orderId);
+    await apiPut(`/api/custom-orders/admin/${orderId}/status`, { status });
 
-    loadOrders();
+    await loadOrders();
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status });
     }
@@ -53,15 +49,11 @@ export default function AdminCustomOrders() {
   const updatePrice = async (orderId: string) => {
     if (!estimatedPrice) return;
 
-    await supabase
-      .from('custom_candle_orders')
-      .update({
-        estimated_price: parseFloat(estimatedPrice),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', orderId);
+    await apiPut(`/api/custom-orders/admin/${orderId}/price`, {
+      estimated_price: parseFloat(estimatedPrice),
+    });
 
-    loadOrders();
+    await loadOrders();
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({
         ...selectedOrder,
@@ -98,7 +90,7 @@ export default function AdminCustomOrders() {
             <h2 className="text-xl font-bold">All Custom Requests ({orders.length})</h2>
           </div>
           <div className="overflow-y-auto max-h-[600px]">
-            {orders.map(order => (
+            {orders.map((order) => (
               <div
                 key={order.id}
                 className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
@@ -121,7 +113,7 @@ export default function AdminCustomOrders() {
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-gray-600">
                     {order.scent_preference && <span>{order.scent_preference}</span>}
-                    {order.size && <span> • {order.size}</span>}
+                    {order.size && <span> | {order.size}</span>}
                   </div>
                   <span className="text-sm text-gray-500">
                     {new Date(order.created_at).toLocaleDateString()}
@@ -201,7 +193,7 @@ export default function AdminCustomOrders() {
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
                     />
                     <button
-                      onClick={() => updatePrice(selectedOrder.id)}
+                      onClick={() => void updatePrice(selectedOrder.id)}
                       className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                     >
                       Update
@@ -218,7 +210,7 @@ export default function AdminCustomOrders() {
                   <h3 className="font-semibold text-gray-700 mb-2">Update Status</h3>
                   <select
                     value={selectedOrder.status}
-                    onChange={(e) => updateStatus(selectedOrder.id, e.target.value)}
+                    onChange={(e) => void updateStatus(selectedOrder.id, e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
                     <option value="pending">Pending</option>

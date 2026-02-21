@@ -2,10 +2,10 @@
 
 ## 1) Current Website Analysis
 
-The current app is a Vite + React frontend that talks directly to Supabase from the browser.
+The app is now a Vite + React frontend that talks to Cloudflare Pages Functions (`/api/*`).
 
 Data access is in:
-- `src/lib/supabase.ts`
+- Legacy Supabase client removed from frontend
 - `src/contexts/AuthContext.tsx`
 - `src/components/Shop.tsx`
 - `src/components/CustomOrderForm.tsx`
@@ -21,9 +21,8 @@ Core data model (already mirrored in D1 schema):
 - `custom_candle_orders`
 
 Important architecture note:
-- Supabase currently provides both `Auth` and `RLS`.
 - Cloudflare D1 does not provide Supabase-style auth/session APIs or Postgres RLS.
-- For Cloudflare, auth + authorization must move into a backend layer (Cloudflare Workers).
+- Auth + authorization are implemented in the Pages Functions API.
 
 ## 2) D1 Schema
 
@@ -36,6 +35,7 @@ This recreates your existing tables in SQLite-compatible SQL with:
 - Stock/price/boolean checks
 - Indexes
 - `updated_at` triggers
+- `profiles.password_hash` for Cloudflare auth
 
 ## 3) Create D1 Database
 
@@ -68,6 +68,12 @@ Remote (production):
 npx wrangler d1 execute candle-haven-db --remote --file cloudflare/d1/001_init.sql
 ```
 
+If you already created the DB with an older schema, run:
+
+```powershell
+npx wrangler d1 execute candle-haven-db --remote --file cloudflare/d1/002_add_password_hash.sql
+```
+
 ## 5) Data Migration from Supabase
 
 Recommended:
@@ -77,18 +83,33 @@ Recommended:
 
 If importing with Wrangler SQL, insert rows with explicit `id` and ISO datetime text values.
 
-## 6) Required Backend Change (Critical)
+## 6) Backend Migration Status
 
-Current frontend cannot safely query D1 directly.
+Implemented in this repository:
+- `functions/api/[[route]].ts` (Cloudflare Pages Functions API)
+- Token auth endpoints (`/api/auth/signup`, `/api/auth/login`, `/api/auth/me`)
+- D1-backed product/order/admin/custom-order endpoints
+- Frontend switched from Supabase to `/api/*`
 
-You need Worker API routes for:
-- Public candles list
-- Authenticated order creation + item creation + stock decrement in one transaction
-- Custom order creation
-- Admin-only inventory/order/custom-order management
+Authorization is now enforced in API handlers (user/admin checks).
 
-Authorization checks previously handled by Supabase RLS must be implemented in Worker code.
+## 7) Required Env Vars
 
-## 7) Minimal Next Step
+Set in Cloudflare Pages project:
+- `AUTH_SECRET` (long random string, 32+ chars)
 
-After D1 is created and schema applied, build a Cloudflare Worker API and replace Supabase calls in frontend with `/api/*` endpoints.
+Set D1 binding in project settings:
+- Binding name: `DB`
+- Database: `candle-haven-db`
+
+## 8) Set First Admin
+
+After signing up your first account, promote it:
+
+```powershell
+npx wrangler d1 execute candle-haven-db --remote --command "UPDATE profiles SET is_admin = 1 WHERE email = 'your@email.com';"
+```
+
+## 9) Minimal Next Step
+
+After D1 is created and schema applied, deploy Pages from GitHub and verify signup/login + order flows.

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { apiGet, apiPut } from '../lib/api';
 import { Package, Eye } from 'lucide-react';
 
 interface Order {
@@ -28,26 +28,21 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadOrders();
+    void loadOrders();
   }, []);
 
   const loadOrders = async () => {
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (data) setOrders(data);
-    setLoading(false);
+    try {
+      const response = await apiGet<{ data: Order[] }>('/api/orders/admin');
+      setOrders(response.data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadOrderItems = async (orderId: string) => {
-    const { data } = await supabase
-      .from('order_items')
-      .select('*')
-      .eq('order_id', orderId);
-
-    if (data) setOrderItems(data);
+    const response = await apiGet<{ data: OrderItem[] }>(`/api/orders/admin/${orderId}/items`);
+    setOrderItems(response.data);
   };
 
   const handleViewOrder = async (order: Order) => {
@@ -56,12 +51,9 @@ export default function AdminOrders() {
   };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
-    await supabase
-      .from('orders')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', orderId);
+    await apiPut(`/api/orders/admin/${orderId}/status`, { status });
 
-    loadOrders();
+    await loadOrders();
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status });
     }
@@ -95,13 +87,13 @@ export default function AdminOrders() {
             <h2 className="text-xl font-bold">All Orders ({orders.length})</h2>
           </div>
           <div className="overflow-y-auto max-h-[600px]">
-            {orders.map(order => (
+            {orders.map((order) => (
               <div
                 key={order.id}
                 className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
                   selectedOrder?.id === order.id ? 'bg-orange-50' : ''
                 }`}
-                onClick={() => handleViewOrder(order)}
+                onClick={() => void handleViewOrder(order)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -151,7 +143,7 @@ export default function AdminOrders() {
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-2">Order Items</h3>
                   <div className="space-y-2">
-                    {orderItems.map(item => (
+                    {orderItems.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
                         <span>{item.candle_name} x {item.quantity}</span>
                         <span className="font-medium">${(item.price_at_time * item.quantity).toFixed(2)}</span>
@@ -168,7 +160,7 @@ export default function AdminOrders() {
                   <h3 className="font-semibold text-gray-700 mb-2">Update Status</h3>
                   <select
                     value={selectedOrder.status}
-                    onChange={(e) => updateOrderStatus(selectedOrder.id, e.target.value)}
+                    onChange={(e) => void updateOrderStatus(selectedOrder.id, e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
                     <option value="pending">Pending</option>
