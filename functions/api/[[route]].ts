@@ -433,8 +433,37 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         if (!body) return badRequest("Invalid JSON body");
         const status = String(body.status || "");
         if (!allowedOrderStatuses.has(status)) return badRequest("Invalid status");
+
+        const orderId = segments[2];
+        const existingOrder = await env.DB.prepare("SELECT id, status FROM orders WHERE id = ? LIMIT 1")
+          .bind(orderId)
+          .first<{ id: string; status: string }>();
+        if (!existingOrder) return json({ error: "Order not found" }, 404);
+
+        // Restock once when transitioning into cancelled.
+        if (status === "cancelled" && existingOrder.status !== "cancelled") {
+          const items = await env.DB.prepare(
+            "SELECT candle_id, quantity FROM order_items WHERE order_id = ?"
+          )
+            .bind(orderId)
+            .all<{ candle_id: string | null; quantity: number }>();
+
+          const restockStatements: D1PreparedStatement[] = [];
+          for (const item of items.results) {
+            if (!item.candle_id) continue;
+            restockStatements.push(
+              env.DB.prepare(
+                "UPDATE candles SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+              ).bind(Number(item.quantity), item.candle_id)
+            );
+          }
+          if (restockStatements.length > 0) {
+            await env.DB.batch(restockStatements);
+          }
+        }
+
         await env.DB.prepare("UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-          .bind(status, segments[2])
+          .bind(status, orderId)
           .run();
         return json({ ok: true });
       }
