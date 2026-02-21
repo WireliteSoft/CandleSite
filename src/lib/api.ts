@@ -56,8 +56,13 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const message =
-      payload && typeof payload === 'object' && 'error' in payload
-        ? String((payload as { error: unknown }).error)
+      payload && typeof payload === 'object'
+        ? [
+            'error' in payload ? String((payload as { error: unknown }).error) : '',
+            'detail' in payload ? String((payload as { detail: unknown }).detail) : '',
+          ]
+            .filter(Boolean)
+            .join(': ') || 'Request failed'
         : 'Request failed';
     throw new Error(message);
   }
