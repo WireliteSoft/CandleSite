@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiGet, apiPut } from '../lib/api';
+import { apiDelete, apiGet, apiPut } from '../lib/api';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 interface AdminReview {
@@ -39,6 +39,19 @@ export default function AdminReviews() {
       await loadReviews();
     } catch (error) {
       console.error('Failed to update review status:', error);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const deleteReview = async (id: string) => {
+    if (!confirm('Delete this review permanently?')) return;
+    setSavingId(id);
+    try {
+      await apiDelete(`/api/reviews/admin/${id}`);
+      await loadReviews();
+    } catch (error) {
+      console.error('Failed to delete review:', error);
     } finally {
       setSavingId(null);
     }
@@ -100,6 +113,13 @@ export default function AdminReviews() {
               >
                 Reset Pending
               </button>
+              <button
+                onClick={() => void deleteReview(review.id)}
+                disabled={savingId === review.id}
+                className="px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-black disabled:opacity-50"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
@@ -107,4 +127,3 @@ export default function AdminReviews() {
     </div>
   );
 }
-

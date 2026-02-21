@@ -591,6 +591,16 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         return json({ ok: true });
       }
+
+      if (method === "DELETE" && segments.length === 3) {
+        const existing = await env.DB.prepare("SELECT id FROM reviews WHERE id = ? LIMIT 1")
+          .bind(segments[2])
+          .first<{ id: string }>();
+        if (!existing) return json({ error: "Review not found" }, 404);
+
+        await env.DB.prepare("DELETE FROM reviews WHERE id = ?").bind(segments[2]).run();
+        return json({ ok: true });
+      }
     }
 
 
