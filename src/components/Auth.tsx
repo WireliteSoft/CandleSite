@@ -32,13 +32,13 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <img src={logo} alt="Candle Haven" className="w-[320px] max-w-full h-auto object-contain" />
         </div>
 
-        <h2 className="text-2xl font-semibold text-center mb-6">
+        <h2 className="text-2xl font-semibold text-center mb-6 text-gray-900 dark:text-gray-100">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
 
@@ -51,7 +51,7 @@ export default function Auth() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Full Name
               </label>
               <input
@@ -65,9 +65,9 @@ export default function Auth() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email
-            </label>
+              </label>
             <input
               type="email"
               value={email}
@@ -78,9 +78,9 @@ export default function Auth() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
-            </label>
+              </label>
             <input
               type="password"
               value={password}
@@ -100,7 +100,7 @@ export default function Auth() {
           </button>
         </form>
 
-        <p className="text-center mt-6 text-sm text-gray-600">
+        <p className="text-center mt-6 text-sm text-gray-600 dark:text-gray-300">
           {isLogin ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import Auth from './components/Auth';
 import Shop from './components/Shop';
@@ -7,7 +7,7 @@ import AdminInventory from './components/AdminInventory';
 import AdminOrders from './components/AdminOrders';
 import AdminCustomOrders from './components/AdminCustomOrders';
 import AdminUsers from './components/AdminUsers';
-import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users } from 'lucide-react';
+import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users, Moon, Sun } from 'lucide-react';
 import logo from '../logo.png';
 
 type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-custom' | 'admin-users';
@@ -15,13 +15,23 @@ type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-cust
 function App() {
   const { user, profile, loading, signOut } = useAuth();
   const [currentView, setCurrentView] = useState<View>('shop');
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <Flame className="w-16 h-16 text-orange-500 mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600">Loading...</p>
+          <Flame className="w-16 h-16 text-orange-500 dark:text-orange-400 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );
@@ -32,8 +42,15 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
+      <button
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        className="fixed right-4 top-4 z-50 inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-100 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      >
+        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        {theme === 'dark' ? 'Light' : 'Dark'}
+      </button>
+      <nav className="bg-white dark:bg-gray-800 shadow-md">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
@@ -133,7 +150,7 @@ function App() {
                 )}
                 <button
                   onClick={signOut}
-                  className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                   Sign Out
