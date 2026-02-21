@@ -7,6 +7,8 @@ export default function AdminInventory() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -88,6 +90,43 @@ export default function AdminInventory() {
 
     await loadCandles();
     resetForm();
+  };
+
+  const toDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError('');
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please choose an image file.');
+      return;
+    }
+
+    // Keep payload sizes reasonable for D1 text storage.
+    if (file.size > 2 * 1024 * 1024) {
+      setImageError('Image is too large. Use a file under 2MB.');
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const dataUrl = await toDataUrl(file);
+      setFormData((prev) => ({ ...prev, image_url: dataUrl }));
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      setImageError('Failed to process image.');
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -220,6 +259,28 @@ export default function AdminInventory() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 placeholder="https://example.com/image.jpg"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Upload an image or paste an image URL above. Max file size: 2MB.
+              </p>
+              {uploadingImage && <p className="text-sm text-orange-600 mt-1">Processing image...</p>}
+              {imageError && <p className="text-sm text-red-600 mt-1">{imageError}</p>}
+              {formData.image_url && (
+                <img
+                  src={formData.image_url}
+                  alt="Candle preview"
+                  className="mt-3 h-24 w-24 object-cover rounded-lg border border-gray-200"
+                />
+              )}
             </div>
 
             <div className="md:col-span-2">
