@@ -170,6 +170,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const segments = path.split("/").filter(Boolean);
 
   try {
+    if (!env.DB) {
+      return json({ error: "Server misconfigured: missing D1 binding `DB`." }, 500);
+    }
+    if (!env.AUTH_SECRET) {
+      return json({ error: "Server misconfigured: missing secret `AUTH_SECRET`." }, 500);
+    }
+
     if (method === "POST" && path === "auth/signup") {
       const body = await parseJson(request);
       if (!body) return badRequest("Invalid JSON body");
@@ -473,6 +480,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     return json({ error: "Not found" }, 404);
   } catch (error) {
     console.error("API error:", error);
-    return json({ error: "Internal server error" }, 500);
+    return json(
+      {
+        error: "Internal server error",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
   }
 };
