@@ -401,11 +401,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
             "INSERT INTO order_items (id, order_id, candle_id, quantity, price_at_time, candle_name) VALUES (?, ?, ?, ?, ?, ?)"
           ).bind(crypto.randomUUID(), orderId, candle.id, qty, candle.price, candle.name)
         );
-        statements.push(
-          env.DB.prepare(
-            "UPDATE candles SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-          ).bind(qty, candle.id)
-        );
       }
 
       await env.DB.batch(statements);
@@ -440,8 +435,52 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           .first<{ id: string; status: string }>();
         if (!existingOrder) return json({ error: "Order not found" }, 404);
 
-        // Restock once when transitioning into cancelled.
-        if (status === "cancelled" && existingOrder.status !== "cancelled") {
+        const transitioningToShipped = status === "shipped" && existingOrder.status !== "shipped";
+        const transitioningFromShipped = existingOrder.status === "shipped" && status !== "shipped";
+
+        if (transitioningToShipped) {
+          const items = await env.DB.prepare(
+            "SELECT candle_id, quantity FROM order_items WHERE order_id = ?"
+          )
+            .bind(orderId)
+            .all<{ candle_id: string | null; quantity: number }>();
+
+          const candleIds = [...new Set(items.results.map((i) => i.candle_id).filter(Boolean))] as string[];
+          if (candleIds.length > 0) {
+            const placeholders = candleIds.map(() => "?").join(", ");
+            const candles = await env.DB.prepare(
+              `SELECT id, name, stock_quantity FROM candles WHERE id IN (${placeholders})`
+            )
+              .bind(...candleIds)
+              .all<{ id: string; name: string; stock_quantity: number }>();
+            const candleMap = new Map(candles.results.map((c) => [c.id, c]));
+
+            for (const item of items.results) {
+              if (!item.candle_id) continue;
+              const candle = candleMap.get(item.candle_id);
+              if (!candle) return badRequest("One or more candles no longer exist");
+              if (Number(candle.stock_quantity) < Number(item.quantity)) {
+                return badRequest(`Insufficient stock to ship item: ${candle.name}`);
+              }
+            }
+          }
+
+          const deductStatements: D1PreparedStatement[] = [];
+          for (const item of items.results) {
+            if (!item.candle_id) continue;
+            deductStatements.push(
+              env.DB.prepare(
+                "UPDATE candles SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+              ).bind(Number(item.quantity), item.candle_id)
+            );
+          }
+          if (deductStatements.length > 0) {
+            await env.DB.batch(deductStatements);
+          }
+        }
+
+        // If status moves away from shipped, put stock back once.
+        if (transitioningFromShipped) {
           const items = await env.DB.prepare(
             "SELECT candle_id, quantity FROM order_items WHERE order_id = ?"
           )
@@ -465,6 +504,39 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         await env.DB.prepare("UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
           .bind(status, orderId)
           .run();
+        return json({ ok: true });
+      }
+
+      if (method === "DELETE" && segments.length === 3) {
+        const orderId = segments[2];
+        const existingOrder = await env.DB.prepare("SELECT id, status FROM orders WHERE id = ? LIMIT 1")
+          .bind(orderId)
+          .first<{ id: string; status: string }>();
+        if (!existingOrder) return json({ error: "Order not found" }, 404);
+
+        // If the order had shipped stock deducted, put it back before delete.
+        if (existingOrder.status === "shipped") {
+          const items = await env.DB.prepare(
+            "SELECT candle_id, quantity FROM order_items WHERE order_id = ?"
+          )
+            .bind(orderId)
+            .all<{ candle_id: string | null; quantity: number }>();
+
+          const restockStatements: D1PreparedStatement[] = [];
+          for (const item of items.results) {
+            if (!item.candle_id) continue;
+            restockStatements.push(
+              env.DB.prepare(
+                "UPDATE candles SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+              ).bind(Number(item.quantity), item.candle_id)
+            );
+          }
+          if (restockStatements.length > 0) {
+            await env.DB.batch(restockStatements);
+          }
+        }
+
+        await env.DB.prepare("DELETE FROM orders WHERE id = ?").bind(orderId).run();
         return json({ ok: true });
       }
     }

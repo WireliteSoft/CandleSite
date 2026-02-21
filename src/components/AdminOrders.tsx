@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiGet, apiPut } from '../lib/api';
+import { apiDelete, apiGet, apiPut } from '../lib/api';
 import { Package, Eye } from 'lucide-react';
 
 interface Order {
@@ -56,6 +56,16 @@ export default function AdminOrders() {
     await loadOrders();
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({ ...selectedOrder, status });
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm('Delete this order permanently? This cannot be undone.')) return;
+    await apiDelete(`/api/orders/admin/${orderId}`);
+    await loadOrders();
+    if (selectedOrder?.id === orderId) {
+      setSelectedOrder(null);
+      setOrderItems([]);
     }
   };
 
@@ -174,6 +184,15 @@ export default function AdminOrders() {
                 <div className="text-xs text-gray-500">
                   <p>Order ID: {selectedOrder.id}</p>
                   <p>Created: {new Date(selectedOrder.created_at).toLocaleString()}</p>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <button
+                    onClick={() => void deleteOrder(selectedOrder.id)}
+                    className="w-full px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors"
+                  >
+                    Delete Order
+                  </button>
                 </div>
               </div>
             </div>
