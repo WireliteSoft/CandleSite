@@ -4,5 +4,5 @@ pages_build_output_dir = "dist"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "candle-haven-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_name = "candledb"
+database_id = "9a59058c-e121-4643-9712-3abc25aa2557"
