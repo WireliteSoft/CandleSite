@@ -3,14 +3,16 @@ import { useAuth } from './contexts/AuthContext';
 import Auth from './components/Auth';
 import Shop from './components/Shop';
 import CustomOrderForm from './components/CustomOrderForm';
+import Reviews from './components/Reviews';
 import AdminInventory from './components/AdminInventory';
 import AdminOrders from './components/AdminOrders';
 import AdminCustomOrders from './components/AdminCustomOrders';
 import AdminUsers from './components/AdminUsers';
-import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users, Moon, Sun } from 'lucide-react';
+import AdminReviews from './components/AdminReviews';
+import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users, Moon, Sun, MessageSquare } from 'lucide-react';
 import logo from '../logo.png';
 
-type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-custom' | 'admin-users';
+type View = 'shop' | 'custom' | 'reviews' | 'admin-inventory' | 'admin-orders' | 'admin-custom' | 'admin-users' | 'admin-reviews';
 
 function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -44,10 +46,12 @@ function App() {
   const navItems: Array<{ view: View; label: string; icon: ReactNode; adminOnly?: boolean }> = [
     { view: 'shop', label: 'Shop', icon: <Store className="w-5 h-5" /> },
     { view: 'custom', label: 'Custom Order', icon: <Sparkles className="w-5 h-5" /> },
+    { view: 'reviews', label: 'Reviews', icon: <MessageSquare className="w-5 h-5" /> },
     { view: 'admin-inventory', label: 'Inventory', icon: <Package className="w-5 h-5" />, adminOnly: true },
     { view: 'admin-orders', label: 'Orders', icon: <ShoppingBag className="w-5 h-5" />, adminOnly: true },
     { view: 'admin-custom', label: 'Custom Requests', icon: <FileText className="w-5 h-5" />, adminOnly: true },
     { view: 'admin-users', label: 'Users', icon: <Users className="w-5 h-5" />, adminOnly: true },
+    { view: 'admin-reviews', label: 'Moderate Reviews', icon: <MessageSquare className="w-5 h-5" />, adminOnly: true },
   ];
   const visibleNavItems = navItems.filter((item) => !item.adminOnly || profile?.is_admin);
 
@@ -128,10 +132,12 @@ function App() {
       <main>
         {currentView === 'shop' && <Shop />}
         {currentView === 'custom' && <CustomOrderForm />}
+        {currentView === 'reviews' && <Reviews />}
         {currentView === 'admin-inventory' && profile?.is_admin && <AdminInventory />}
         {currentView === 'admin-orders' && profile?.is_admin && <AdminOrders />}
         {currentView === 'admin-custom' && profile?.is_admin && <AdminCustomOrders />}
         {currentView === 'admin-users' && profile?.is_admin && <AdminUsers />}
+        {currentView === 'admin-reviews' && profile?.is_admin && <AdminReviews />}
       </main>
     </div>
   );

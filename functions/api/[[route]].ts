@@ -155,6 +155,32 @@ const requireAdmin = async (request: Request, env: Env) => {
   return auth;
 };
 
+const ensureReviewsTable = async (env: Env) => {
+  await env.DB.batch([
+    env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        customer_name TEXT,
+        customer_email TEXT,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        title TEXT,
+        comment TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+        admin_note TEXT,
+        reviewed_by TEXT,
+        reviewed_at TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE,
+        FOREIGN KEY (reviewed_by) REFERENCES profiles(id) ON DELETE SET NULL
+      )
+    `),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at)"),
+  ]);
+};
+
 const getPath = (request: Request) => {
   const path = new URL(request.url).pathname;
   return path.replace(/^\/api\/?/, "");
@@ -162,6 +188,7 @@ const getPath = (request: Request) => {
 
 const allowedOrderStatuses = new Set(["pending", "processing", "shipped", "delivered", "cancelled"]);
 const allowedCustomStatuses = new Set(["pending", "in_progress", "completed", "cancelled"]);
+const allowedReviewStatuses = new Set(["pending", "approved", "rejected"]);
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
@@ -473,6 +500,95 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         )
           .bind(price, segments[2])
           .run();
+        return json({ ok: true });
+      }
+    }
+
+    if (method === "GET" && path === "reviews") {
+      await ensureReviewsTable(env);
+      const result = await env.DB.prepare(
+        `SELECT id, customer_name, rating, title, comment, created_at, reviewed_at
+         FROM reviews
+         WHERE status = 'approved'
+         ORDER BY datetime(COALESCE(reviewed_at, created_at)) DESC`
+      ).all();
+      return json({ data: result.results as Json[] });
+    }
+
+    if (method === "POST" && path === "reviews") {
+      await ensureReviewsTable(env);
+      const auth = await requireUser(request, env);
+      if (!auth) return unauthorized();
+      const body = await parseJson(request);
+      if (!body) return badRequest("Invalid JSON body");
+
+      const rating = Number(body.rating);
+      const title = String(body.title || "").trim();
+      const comment = String(body.comment || "").trim();
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return badRequest("Rating must be an integer between 1 and 5");
+      }
+      if (!comment) return badRequest("Review comment is required");
+
+      await env.DB.prepare(
+        `INSERT INTO reviews (
+          id, user_id, customer_name, customer_email, rating, title, comment, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`
+      )
+        .bind(
+          crypto.randomUUID(),
+          auth.profile.id,
+          auth.profile.full_name ?? null,
+          auth.profile.email,
+          rating,
+          title || null,
+          comment
+        )
+        .run();
+
+      return json({ ok: true, message: "Review submitted for admin approval." }, 201);
+    }
+
+    if (segments[0] === "reviews" && segments[1] === "admin") {
+      await ensureReviewsTable(env);
+      const admin = await requireAdmin(request, env);
+      if (!admin) return forbidden();
+
+      if (method === "GET" && segments.length === 2) {
+        const result = await env.DB.prepare(
+          `SELECT id, user_id, customer_name, customer_email, rating, title, comment, status, admin_note, reviewed_by, reviewed_at, created_at, updated_at
+           FROM reviews
+           ORDER BY datetime(created_at) DESC`
+        ).all();
+        return json({ data: result.results as Json[] });
+      }
+
+      if (method === "PUT" && segments.length === 4 && segments[3] === "status") {
+        const body = await parseJson(request);
+        if (!body) return badRequest("Invalid JSON body");
+        const status = String(body.status || "");
+        const adminNote = body.admin_note ? String(body.admin_note) : null;
+        if (!allowedReviewStatuses.has(status)) return badRequest("Invalid status");
+
+        const existing = await env.DB.prepare("SELECT id FROM reviews WHERE id = ? LIMIT 1")
+          .bind(segments[2])
+          .first<{ id: string }>();
+        if (!existing) return json({ error: "Review not found" }, 404);
+
+        if (status === "pending") {
+          await env.DB.prepare(
+            "UPDATE reviews SET status = ?, admin_note = ?, reviewed_by = NULL, reviewed_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+          )
+            .bind(status, adminNote, segments[2])
+            .run();
+        } else {
+          await env.DB.prepare(
+            "UPDATE reviews SET status = ?, admin_note = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+          )
+            .bind(status, adminNote, admin.profile.id, segments[2])
+            .run();
+        }
+
         return json({ ok: true });
       }
     }
