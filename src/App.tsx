@@ -6,9 +6,10 @@ import CustomOrderForm from './components/CustomOrderForm';
 import AdminInventory from './components/AdminInventory';
 import AdminOrders from './components/AdminOrders';
 import AdminCustomOrders from './components/AdminCustomOrders';
-import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield } from 'lucide-react';
+import AdminUsers from './components/AdminUsers';
+import { Flame, Store, Sparkles, Package, ShoppingBag, FileText, LogOut, Shield, Users } from 'lucide-react';
 
-type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-custom';
+type View = 'shop' | 'custom' | 'admin-inventory' | 'admin-orders' | 'admin-custom' | 'admin-users';
 
 function App() {
   const { user, profile, loading, signOut } = useAuth();
@@ -102,6 +103,18 @@ function App() {
                     <FileText className="w-5 h-5" />
                     Custom Requests
                   </button>
+
+                  <button
+                    onClick={() => setCurrentView('admin-users')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                      currentView === 'admin-users'
+                        ? 'bg-orange-500 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Users className="w-5 h-5" />
+                    Users
+                  </button>
                 </>
               )}
 
@@ -133,6 +146,7 @@ function App() {
         {currentView === 'admin-inventory' && profile?.is_admin && <AdminInventory />}
         {currentView === 'admin-orders' && profile?.is_admin && <AdminOrders />}
         {currentView === 'admin-custom' && profile?.is_admin && <AdminCustomOrders />}
+        {currentView === 'admin-users' && profile?.is_admin && <AdminUsers />}
       </main>
     </div>
   );

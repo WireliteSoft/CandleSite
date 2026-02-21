@@ -477,6 +477,44 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     }
 
+
+    if (segments[0] === "users" && segments[1] === "admin") {
+      const admin = await requireAdmin(request, env);
+      if (!admin) return forbidden();
+
+      if (method === "GET" && segments.length === 2) {
+        const result = await env.DB.prepare(
+          "SELECT id, email, full_name, is_admin, created_at FROM profiles ORDER BY datetime(created_at) DESC"
+        ).all();
+        return json({ data: result.results as Json[] });
+      }
+
+      if (method === "PUT" && segments.length === 3) {
+        const body = await parseJson(request);
+        if (!body) return badRequest("Invalid JSON body");
+
+        const targetUserId = segments[2];
+        const rawIsAdmin = body.is_admin;
+        if (typeof rawIsAdmin !== "boolean") {
+          return badRequest("`is_admin` must be a boolean");
+        }
+
+        if (targetUserId === admin.profile.id && rawIsAdmin === false) {
+          return badRequest("You cannot remove your own admin access");
+        }
+
+        const existing = await env.DB.prepare("SELECT id FROM profiles WHERE id = ? LIMIT 1")
+          .bind(targetUserId)
+          .first<{ id: string }>();
+        if (!existing) return json({ error: "User not found" }, 404);
+
+        await env.DB.prepare("UPDATE profiles SET is_admin = ? WHERE id = ?")
+          .bind(rawIsAdmin ? 1 : 0, targetUserId)
+          .run();
+
+        return json({ ok: true });
+      }
+    }
     return json({ error: "Not found" }, 404);
   } catch (error) {
     console.error("API error:", error);
@@ -489,3 +527,4 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     );
   }
 };
+
