@@ -36,6 +36,7 @@ export default function Auth() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="flex items-center justify-center mb-8">
           <img src={logo} alt="Candle Haven" className="w-[320px] max-w-full h-auto object-contain" />
+          <h1>Login to make Custom Candle Requests</h1>
         </div>
 
         <h2 className="text-2xl font-semibold text-center mb-6 text-gray-900 dark:text-gray-100">
