@@ -38,7 +38,6 @@ export default function Auth() {
           <img src={logo} alt="Candle Haven" className="w-[320px] max-w-full h-auto object-contain" />
         </div>
         <br/>
-        <br/>
           <center><h1>Login to make Custom Candle Requests</h1></center>
         <h2 className="text-2xl font-semibold text-center mb-6 text-gray-900 dark:text-gray-100">
           {isLogin ? 'Welcome Back' : 'Create Account'}
