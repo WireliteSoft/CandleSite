@@ -39,7 +39,7 @@ export default function Auth() {
         </div>
         <br/>
         <br/>
-          <h1>Login to make Custom Candle Requests</h1>
+          <center><h1>Login to make Custom Candle Requests</h1></center>
         <h2 className="text-2xl font-semibold text-center mb-6 text-gray-900 dark:text-gray-100">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
